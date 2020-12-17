@@ -29,6 +29,9 @@
 #   The state of the package that needs to be installed: present or latest.
 #   Default: present
 #
+# [*zabbix_package_basename*]
+#    The basename of the zabbix server package (Example zabbix30 or zabbix40).
+#
 # [*manage_firewall*]
 #   When true, it will create iptables rules.
 #
@@ -259,7 +262,8 @@
 #   Location of SSL private key files for client authentication.
 #
 # [*manage_startup_script*]
-#  If the init script should be managed by this module. Attention: This might cause problems with some config options of this module (e.g server_configfile_path)
+#  If the init script should be managed by this module. Attention: This might cause problems with some config options of this module
+#  (e.g server_configfile_path)
 #
 # [*socketdir*]
 #   IPC socket directory.
@@ -300,6 +304,7 @@ class zabbix::server (
   Zabbix::Databases $database_type           = $zabbix::params::database_type,
   $database_path                             = $zabbix::params::database_path,
   $zabbix_version                            = $zabbix::params::zabbix_version,
+  $zabbix_package_basename                   = $zabbix::params::zabbix_package_basename,
   $zabbix_package_state                      = $zabbix::params::zabbix_package_state,
   Boolean $manage_firewall                   = $zabbix::params::manage_firewall,
   Boolean $manage_repo                       = $zabbix::params::manage_repo,
@@ -432,7 +437,7 @@ class zabbix::server (
           database_password    => $database_password,
           database_host        => $database_host,
           database_path        => $database_path,
-          require              => Package["zabbix-server-${db}"],
+          require              => Package["${zabbix_package_basename}-server-${db}"],
         }
       }
     }
@@ -450,7 +455,7 @@ class zabbix::server (
           database_password    => $database_password,
           database_host        => $database_host,
           database_path        => $database_path,
-          require              => Package["zabbix-server-${db}"],
+          require              => Package["${zabbix_package_basename}-server-${db}"],
         }
       }
     }
@@ -459,8 +464,11 @@ class zabbix::server (
     }
   }
 
+  ## Define local zabbix server package name
+  $_package_name = "${zabbix_package_basename}-server-${db}"
+
   # Installing the packages
-  package { "zabbix-server-${db}":
+  package { $_package_name:
     ensure  => $zabbix_package_state,
     require => Class['zabbix::repo'],
     tag     => 'zabbix',
@@ -476,18 +484,18 @@ class zabbix::server (
       additional_service_params => $real_additional_service_params,
       manage_database           => $manage_database,
       service_name              => 'zabbix-server',
-      require                   => Package["zabbix-server-${db}"],
+      require                   => Package[$_package_name],
     }
 
-    $require_for_service = [Package["zabbix-server-${db}"], File[$include_dir], File[$server_configfile_path], Zabbix::Startup['zabbix-server']]
+    $require_for_service = [Package[$_package_name], File[$include_dir], File[$server_configfile_path], Zabbix::Startup['zabbix-server']]
   } else {
-    $require_for_service = [Package["zabbix-server-${db}"], File[$include_dir], File[$server_configfile_path]]
+    $require_for_service = [Package[$_package_name], File[$include_dir], File[$server_configfile_path]]
   }
 
   if $server_configfile_path != '/etc/zabbix/zabbix_server.conf' {
     file { '/etc/zabbix/zabbix_server.conf':
       ensure  => absent,
-      require => Package["zabbix-server-${db}"],
+      require => Package[$_package_name],
     }
   }
 
@@ -516,7 +524,7 @@ class zabbix::server (
       start      => "/usr/sbin/pcs resource start ${pacemaker_resource}",
       stop       => "/usr/sbin/pcs resource stop ${pacemaker_resource}",
       require    => [
-        Package["zabbix-server-${db}"],
+        Package[$_package_name],
         File[$include_dir],
         File[$server_configfile_path],
       ],
@@ -540,7 +548,7 @@ class zabbix::server (
     owner   => $server_config_owner,
     group   => $server_config_group,
     mode    => '0640',
-    require => Package["zabbix-server-${db}"],
+    require => Package[$_package_name],
     replace => true,
     content => template('zabbix/zabbix_server.conf.erb'),
   }

@@ -28,6 +28,10 @@
 #   The state of the package that needs to be installed: present or latest.
 #   Default: present
 #
+# [*zabbix_package_basename*]
+#    The basename of the zabbix server package (Example zabbix30 or zabbix40).
+#    Default: zabbix
+#
 # [*manage_database*]
 #   When true, it will configure the database and execute the sql scripts.
 #
@@ -340,6 +344,7 @@ class zabbix::proxy (
   $database_path                            = $zabbix::params::database_path,
   $zabbix_version                           = $zabbix::params::zabbix_version,
   $zabbix_package_state                     = $zabbix::params::zabbix_package_state,
+  $zabbix_package_basename                  = $zabbix::params::zabbix_package_basename,
   Boolean $manage_database                  = $zabbix::params::manage_database,
   Boolean $manage_firewall                  = $zabbix::params::manage_firewall,
   Boolean $manage_repo                      = $zabbix::params::manage_repo,
@@ -481,6 +486,9 @@ class zabbix::proxy (
     default      : { fail("Unrecognized database type for proxy: ${database_type}") }
   }
 
+  # Define local package name
+  $_package_name = "${zabbix_package_basename}-proxy-${db}"
+
   if $manage_database {
     case $database_type {
       'postgresql' : {
@@ -494,7 +502,7 @@ class zabbix::proxy (
           database_password    => $database_password,
           database_host        => $database_host,
           database_path        => $database_path,
-          require              => Package["zabbix-proxy-${db}"],
+          require              => Package[$_package_name],
         }
       }
       'mysql'      : {
@@ -508,7 +516,7 @@ class zabbix::proxy (
           database_password    => $database_password,
           database_host        => $database_host,
           database_path        => $database_path,
-          require              => Package["zabbix-proxy-${db}"],
+          require              => Package[$_package_name],
         }
       }
 
@@ -527,32 +535,33 @@ class zabbix::proxy (
       zabbix_version => $zabbix_version,
     }
 
-    Package["zabbix-proxy-${db}"] {
+    Package[$_package_name] {
       require => Class['zabbix::repo']
     }
   }
 
   # Now we are going to install the correct packages.
   case $facts['os']['name'] {
-    'redhat', 'centos', 'oraclelinux', 'VirtuozzoLinux': {
+    #'redhat', 'centos', 'oraclelinux', 'VirtuozzoLinux': {
+    'oraclelinux', 'VirtuozzoLinux': {
       #There is no zabbix-proxy package in 3.0
       if versioncmp('3.0',$zabbix_version) > 0 {
         package { 'zabbix-proxy':
           ensure  => $zabbix_package_state,
-          require => Package["zabbix-proxy-${db}"],
+          require => Package[$_package_name],
           tag     => 'zabbix',
         }
       }
 
       # Installing the packages
-      package { "zabbix-proxy-${db}":
+      package { $_package_name:
         ensure => $zabbix_package_state,
         tag    => 'zabbix',
       }
     } # END 'redhat','centos','oraclelinux'
     default : {
       # Installing the packages
-      package { "zabbix-proxy-${db}":
+      package { $_package_name:
         ensure => $zabbix_package_state,
         tag    => 'zabbix',
       }
@@ -571,7 +580,7 @@ class zabbix::proxy (
         Class['zabbix::database']
       ],
       require    => [
-        Package["zabbix-proxy-${db}"],
+        Package[$_package_name],
         File[$include_dir],
         File[$proxy_configfile_path],
         Class['zabbix::database']
@@ -609,7 +618,7 @@ class zabbix::proxy (
     owner   => 'zabbix',
     group   => 'zabbix',
     mode    => '0644',
-    require => Package["zabbix-proxy-${db}"],
+    require => Package[$_package_name],
     replace => true,
     content => template('zabbix/zabbix_proxy.conf.erb'),
   }

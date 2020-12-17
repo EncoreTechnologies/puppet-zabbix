@@ -37,6 +37,10 @@
 #   The state of the package that needs to be installed: present or latest.
 #   Default: present
 #
+# [*zabbix_package_basename*]
+#   Zabbix base package name (Example: zabbix40, zabbix30)
+#   Default: zabbix
+#
 # [*web_config_owner*]
 #   Which user should own the web interface configuration file.
 #
@@ -191,6 +195,7 @@ class zabbix::web (
   $manage_repo                                                        = $zabbix::params::manage_repo,
   $zabbix_version                                                     = $zabbix::params::zabbix_version,
   $zabbix_timezone                                                    = $zabbix::params::zabbix_timezone,
+  $zabbix_package_basename                                            = $zabbix::params::zabbix_package_basename,
   $zabbix_package_state                                               = $zabbix::params::zabbix_package_state,
   $zabbix_template_dir                                                = $zabbix::params::zabbix_template_dir,
   $web_config_owner                                                   = $zabbix::params::web_config_owner,
@@ -337,10 +342,34 @@ class zabbix::web (
         ],
       }
     }
+    'RedHat': {
+      #TODO Check package versions per release
+      #  if versioncmp($facts['os']['release']['major'], '6') >= 0 {
+      #    $php_db_package = "php55-${db}"
+      #  } else {
+      #    $php_db_package = "php-${db}"
+      #  }
+      $php_db_package     = "php55-${db}"
+      $zabbix_web_package = "${zabbix_package_basename}-web"
+
+      package { $php_db_package:
+        ensure => $zabbix_package_state,
+        before => [
+          Package[$zabbix_web_package],
+          File['/etc/zabbix/web/zabbix.conf.php'],
+        ],
+      }
+
+      package { "${zabbix_web_package}-${db}":
+        ensure => $zabbix_package_state,
+        before => Package[$zabbix_web_package],
+        tag    => 'zabbix',
+      }
+    }
     default: {
       $zabbix_web_package = 'zabbix-web'
 
-      package { "zabbix-web-${db}":
+      package { "${zabbix_web_package}-${db}":
         ensure  => $zabbix_package_state,
         before  => Package[$zabbix_web_package],
         require => Class['zabbix::repo'],
@@ -358,10 +387,10 @@ class zabbix::web (
   }
 
   package { $zabbix_web_package:
-    ensure  => $zabbix_package_state,
-    before  => File['/etc/zabbix/web/zabbix.conf.php'],
-    require => Class['zabbix::repo'],
-    tag     => 'zabbix',
+    ensure => $zabbix_package_state,
+    before => File['/etc/zabbix/web/zabbix.conf.php'],
+    #require => Class['zabbix::repo'],
+    tag    => 'zabbix',
   }
 
   # Webinterface config file

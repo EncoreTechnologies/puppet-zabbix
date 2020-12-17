@@ -181,6 +181,7 @@ class zabbix (
   String $additional_service_params         = $zabbix::params::additional_service_params,
   Optional[String[1]] $zabbix_user          = $zabbix::params::server_zabbix_user,
   Optional[String] $zabbix_server_name      = $zabbix::params::zabbix_server,
+  Optional[String] $zabbix_package_basename = $zabbix::params::zabbix_package_basename,
 ) inherits zabbix::params {
   class { 'zabbix::web':
     zabbix_url                               => $zabbix_url,
@@ -227,6 +228,7 @@ class zabbix (
     database_path             => $database_path,
     zabbix_version            => $zabbix_version,
     zabbix_package_state      => $zabbix_package_state,
+    zabbix_package_basename   => $zabbix_package_basename,
     manage_firewall           => $manage_firewall,
     manage_repo               => $manage_repo,
     manage_database           => $manage_database,

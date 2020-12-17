@@ -101,6 +101,26 @@ class zabbix::params {
       $zabbix_package_provider  = undef
       $agent_loadmodulepath     = '/usr/lib/modules'
     }
+    'RedHat': {
+      $server_fpinglocation     = '/usr/sbin/fping'
+      $server_fping6location    = '/usr/sbin/fping6'
+      $proxy_fpinglocation      = '/usr/sbin/fping'
+      $proxy_fping6location     = '/usr/sbin/fping6'
+      $manage_repo              = true
+      $manage_choco             = false
+      $zabbix_package_agent     = 'zabbix40-agent'
+      $zabbix_package_basename  = 'zabbix40'
+      $agent_configfile_path    = '/etc/zabbix/zabbix_agentd.conf'
+      $agent_config_owner       = 'zabbix'
+      $agent_zabbix_user        = 'zabbix'
+      $agent_config_group       = 'zabbix'
+      $agent_pidfile            = '/var/run/zabbix/zabbix_agentd.pid'
+      $agent_include            = '/etc/zabbix/zabbix_agentd.d'
+      $agent_servicename        = 'zabbix-agent'
+      $server_zabbix_user       = 'zabbix'
+      $zabbix_package_provider  = undef
+      $agent_loadmodulepath     = '/usr/lib/modules'
+    }
     'windows': {
       $manage_repo             = false
       $manage_choco            = true
